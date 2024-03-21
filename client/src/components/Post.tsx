@@ -1,49 +1,69 @@
 import { Button, Card, CardBody, CardFooter } from "@nextui-org/react";
 import { Post } from "@prisma/client";
-import { Dispatch, PropsWithChildren, SetStateAction } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { PropsWithChildren } from "react";
 
-export default function Post(
-	props: PropsWithChildren<{ post: Post; setPosts: Dispatch<SetStateAction<Post[]>> }>
-) {
-	async function edit() {
-		try {
-			await fetch(`${import.meta.env.VITE_API_URL}/api/post/${props.post.id}`, {
+export default function Post(props: PropsWithChildren<{ post: Post }>) {
+	const queryClient = useQueryClient();
+	const editMutation = useMutation({
+		mutationFn: async (editPost: Omit<Omit<Post, "createdAt">, "updatedAt">) => {
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/post/${editPost.id}`, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					text: "edit",
+					text: editPost.text,
 				}),
 			});
-			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/post`);
-			const posts: Post[] = await response.json();
-			props.setPosts(posts);
-		} catch (error) {
+			const editedPost: Post = await response.json();
+			return editedPost;
+		},
+		onSuccess(editedPost) {
+			const previousPosts = queryClient.getQueryData<Post[]>(["posts"]);
+			if (previousPosts) {
+				queryClient.setQueryData<Post[]>(
+					["posts"],
+					previousPosts.map((post) => (post.id === editedPost.id ? editedPost : post))
+				);
+			}
+		},
+		onError(error) {
 			throw error;
-		}
-	}
-	async function remove() {
-		try {
-			await fetch(`${import.meta.env.VITE_API_URL}/api/post/${props.post.id}`, {
+		},
+	});
+	const deleteMutation = useMutation({
+		mutationFn: async (postId: number) => {
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/post/${postId}`, {
 				method: "DELETE",
 			});
-			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/post`);
-			const posts: Post[] = await response.json();
-			props.setPosts(posts);
-		} catch (error) {
+			const deletedPost: Post = await response.json();
+			return deletedPost;
+		},
+		onSuccess(_, postId) {
+			const previousPosts = queryClient.getQueryData<Post[]>(["posts"]);
+			if (previousPosts) {
+				queryClient.setQueryData<Post[]>(
+					["posts"],
+					previousPosts.filter((post) => post.id !== postId)
+				);
+			}
+		},
+		onError(error) {
 			throw error;
-		}
-	}
+		},
+	});
 
 	return (
 		<Card>
 			<CardBody>{props.children}</CardBody>
-			<CardFooter className='justify-center gap-2'>
-				<Button color="danger" onClick={remove}>
+			<CardFooter className="justify-center gap-2">
+				<Button color="danger" onClick={() => deleteMutation.mutate(props.post.id)}>
 					削除
 				</Button>
-				<Button onClick={edit}>編集</Button>
+				<Button onClick={() => editMutation.mutate({ id: props.post.id, text: "edit" })}>
+					編集
+				</Button>
 			</CardFooter>
 		</Card>
 	);
