@@ -13,7 +13,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model post {
+model Post {
   id        String   @id @default(cuid())
   text   String
   createdAt DateTime @default(now())

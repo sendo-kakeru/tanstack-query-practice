@@ -1,17 +1,9 @@
-import { post } from "@prisma/client";
-import { type MetaFunction } from "@remix-run/node";
+import { Button, Card, CardBody } from "@nextui-org/react";
+import { Post } from "@prisma/client";
 import { FormEvent, useEffect, useState } from "react";
 
-
-export const meta: MetaFunction = () => {
-	return [
-		{ title: "New Remix SPA" },
-		{ name: "description", content: "Welcome to Remix (SPA Mode)!" },
-	];
-};
-
-export default function Index() {
-	const [ posts, setPosts] = useState<post[]>([])
+export default function App() {
+	const [posts, setPosts] = useState<Post[]>([]);
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		console.log(import.meta.env.VITE_API_URL);
@@ -23,13 +15,12 @@ export default function Index() {
 				},
 				body: JSON.stringify({
 					text: "hello",
-					// content: "aaaaaaa",
 				}),
 			});
-			const result = await response.json();
-			console.log(result);
+			const post: Post = await response.json();
+			setPosts((prev) => [...prev, post]);
 		} catch (error) {
-			console.log(error);
+			throw error;
 		}
 	}
 	useEffect(() => {
@@ -42,9 +33,15 @@ export default function Index() {
 	return (
 		<div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
 			<form onSubmit={handleSubmit}>
-				<button type="submit">submit</button>
+				<Button type="submit">submit</Button>
 			</form>
-			
+			<div className="flex flex-wrap">
+				{posts.map((post) => (
+					<Card key={post.id}>
+						<CardBody>{post.text}</CardBody>
+					</Card>
+				))}
+			</div>
 		</div>
 	);
 }
