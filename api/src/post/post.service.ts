@@ -13,14 +13,16 @@ export class PostService {
   }
 
   findAll() {
-    return this.prisma.post.findMany();
+    return this.prisma.post.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  findOne(id: string) {
+  findOne(id: number) {
     return this.prisma.post.findUnique({ where: { id } });
   }
 
-  update(id: string, updatePostDto: UpdatePostDto) {
+  update(id: number, updatePostDto: UpdatePostDto) {
     return this.prisma.post.update({
       where: { id },
       data: {
@@ -29,7 +31,7 @@ export class PostService {
     });
   }
 
-  remove(id: string) {
+  remove(id: number) {
     return this.prisma.post.delete({ where: { id } });
   }
   removeAll() {

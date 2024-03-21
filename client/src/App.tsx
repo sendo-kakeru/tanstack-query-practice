@@ -1,12 +1,11 @@
-import { Button, Card, CardBody } from "@nextui-org/react";
-import { Post } from "@prisma/client";
-import { FormEvent, useEffect, useState } from "react";
+import { Button } from "@nextui-org/react";
+import { Post as PostType } from "@prisma/client";
+import { useEffect, useState } from "react";
+import Post from "./components/Post";
 
 export default function App() {
-	const [posts, setPosts] = useState<Post[]>([]);
-	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		console.log(import.meta.env.VITE_API_URL);
+	const [posts, setPosts] = useState<PostType[]>([]);
+	async function create() {
 		try {
 			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/post`, {
 				method: "POST",
@@ -14,10 +13,10 @@ export default function App() {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					text: "hello",
+					text: "create",
 				}),
 			});
-			const post: Post = await response.json();
+			const post: PostType = await response.json();
 			setPosts((prev) => [...prev, post]);
 		} catch (error) {
 			throw error;
@@ -26,20 +25,22 @@ export default function App() {
 	useEffect(() => {
 		(async () => {
 			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/post`);
-			const result = await response.json();
-			console.log(result);
+			const posts: PostType[] = await response.json();
+			setPosts(posts);
 		})();
 	}, []);
 	return (
-		<div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
-			<form onSubmit={handleSubmit}>
-				<Button type="submit">submit</Button>
-			</form>
-			<div className="flex flex-wrap">
+		<div className="flex flex-col items-center p-8 gap-4">
+			<Button type="submit" color="primary" onClick={create}>
+				作成
+			</Button>
+			{/* <Button color="danger">全て削除</Button> */}
+			<div className="flex flex-wrap gap-4">
 				{posts.map((post) => (
-					<Card key={post.id}>
-						<CardBody>{post.text}</CardBody>
-					</Card>
+					<Post post={post} setPosts={setPosts} key={post.id}>
+						<p>{post.id}</p>
+						<b className="mx-auto text-xl">{post.text}</b>
+					</Post>
 				))}
 			</div>
 		</div>
