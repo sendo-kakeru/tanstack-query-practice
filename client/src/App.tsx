@@ -32,7 +32,6 @@ export default function App() {
 			});
 			return response.json();
 		},
-		mutationKey: ["infinite-posts"],
 		onSuccess(createdPost: PostType) {
 			const previousPages = queryClient.getQueryData<InfiniteData<PostType[]>>(["infinite-posts"]);
 			if (previousPages) {

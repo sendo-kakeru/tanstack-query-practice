@@ -1,6 +1,6 @@
 import { Button, Card, CardBody, CardFooter } from "@nextui-org/react";
 import { Post } from "@prisma/client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { InfiniteData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PropsWithChildren } from "react";
 
 export default function Post(props: PropsWithChildren<{ post: Post }>) {
@@ -18,13 +18,20 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 			});
 			return response.json();
 		},
-		onSuccess(editedPost) {
-			const previousPosts = queryClient.getQueryData<Post[]>(["infinite-posts"]);
-			if (previousPosts) {
-				queryClient.setQueryData<Post[]>(
-					["infinite-posts"],
-					previousPosts.map((post) => (post.id === editedPost.id ? editedPost : post))
-				);
+		onSuccess(editedPost: Post) {
+			const previousPages = queryClient.getQueryData<InfiniteData<Post[]>>(["infinite-posts"]);
+			if (previousPages) {
+				queryClient.setQueryData<InfiniteData<Post[]>>(["infinite-posts"], {
+					pages: previousPages.pages.map((page) =>
+						page.map((post) => {
+							if (editedPost.id === post.id) {
+								return editedPost;
+							}
+							return post;
+						})
+					),
+					pageParams: previousPages.pageParams,
+				});
 			}
 		},
 		onError(error) {
@@ -37,15 +44,14 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 				method: "DELETE",
 			});
 			return response.json();
-			// return deletedPost;
 		},
 		onSuccess(_, postId) {
-			const previousPosts = queryClient.getQueryData<Post[]>(["infinite-posts"]);
-			if (previousPosts) {
-				queryClient.setQueryData<Post[]>(
-					["infinite-posts"],
-					previousPosts.filter((post) => post.id !== postId)
-				);
+			const previousPages = queryClient.getQueryData<InfiniteData<Post[]>>(["infinite-posts"]);
+			if (previousPages) {
+				queryClient.setQueryData<InfiniteData<Post[]>>(["infinite-posts"], {
+					pages: previousPages.pages.map((page) => page.filter((post) => postId !== post.id)),
+					pageParams: previousPages.pageParams,
+				});
 			}
 		},
 		onError(error) {
@@ -54,7 +60,7 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 	});
 
 	return (
-		<Card className="h-[50vh]" >
+		<Card>
 			<CardBody>{props.children}</CardBody>
 			<CardFooter className="justify-center gap-2">
 				<Button color="danger" onClick={() => deleteMutation.mutate(props.post.id)}>
