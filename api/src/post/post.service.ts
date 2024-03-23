@@ -12,9 +12,12 @@ export class PostService {
     return this.prisma.post.create({ data: { text: createPostDto.text } });
   }
 
-  findAll() {
+  findAll(page: number) {
+    const perPage = 3;
     return this.prisma.post.findMany({
       orderBy: { createdAt: 'desc' },
+      skip: page * 3,
+      take: perPage,
     });
   }
 

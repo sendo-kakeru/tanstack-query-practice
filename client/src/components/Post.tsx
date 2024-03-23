@@ -16,14 +16,13 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 					text: editPost.text,
 				}),
 			});
-			const editedPost: Post = await response.json();
-			return editedPost;
+			return response.json();
 		},
 		onSuccess(editedPost) {
-			const previousPosts = queryClient.getQueryData<Post[]>(["posts"]);
+			const previousPosts = queryClient.getQueryData<Post[]>(["infinite-posts"]);
 			if (previousPosts) {
 				queryClient.setQueryData<Post[]>(
-					["posts"],
+					["infinite-posts"],
 					previousPosts.map((post) => (post.id === editedPost.id ? editedPost : post))
 				);
 			}
@@ -37,14 +36,14 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/post/${postId}`, {
 				method: "DELETE",
 			});
-			const deletedPost: Post = await response.json();
-			return deletedPost;
+			return response.json();
+			// return deletedPost;
 		},
 		onSuccess(_, postId) {
-			const previousPosts = queryClient.getQueryData<Post[]>(["posts"]);
+			const previousPosts = queryClient.getQueryData<Post[]>(["infinite-posts"]);
 			if (previousPosts) {
 				queryClient.setQueryData<Post[]>(
-					["posts"],
+					["infinite-posts"],
 					previousPosts.filter((post) => post.id !== postId)
 				);
 			}
@@ -55,7 +54,7 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 	});
 
 	return (
-		<Card>
+		<Card className="h-[50vh]" >
 			<CardBody>{props.children}</CardBody>
 			<CardFooter className="justify-center gap-2">
 				<Button color="danger" onClick={() => deleteMutation.mutate(props.post.id)}>
