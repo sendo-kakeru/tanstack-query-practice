@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  Logger,
   HttpCode,
   Query,
 } from '@nestjs/common';
@@ -17,18 +16,20 @@ import { UpdatePostDto } from './dto/update-post.dto';
 @Controller('api/post')
 export class PostController {
   constructor(private readonly postService: PostService) {}
-  private readonly logger = new Logger(PostController.name);
 
   @Post()
   @HttpCode(201)
   async create(@Body() createPostDto: CreatePostDto) {
-    this.logger.log('dto', createPostDto);
     return this.postService.create(createPostDto);
   }
 
   @Get()
-  findAll(@Query() query: { page: string }) {
-    return this.postService.findAll(+query.page);
+  findAll(@Query() query: { take: string; last_cursor?: string }) {
+    return this.postService.findAll(+query.last_cursor, +query.take);
+  }
+  @Get('count')
+  getCount() {
+    return this.postService.getCount();
   }
 
   @Get(':id')

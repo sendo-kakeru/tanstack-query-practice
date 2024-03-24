@@ -2,22 +2,27 @@ import { Button } from "@nextui-org/react";
 import { Post as PostType } from "@prisma/client";
 import Post from "./components/Post";
 import { InfiniteData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInView } from "react-intersection-observer";
+import { useEffect } from "react";
+import { InfinitePostResponse } from "./types/type";
 
+const take = 2;
 export default function App() {
+	const { ref, inView } = useInView();
 	const queryClient = useQueryClient();
-	const { data, error, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, status } =
-		useInfiniteQuery<PostType[]>({
+	const { data, error, fetchNextPage, hasNextPage, isSuccess, isLoading, isFetchingNextPage } =
+		useInfiniteQuery<InfinitePostResponse>({
 			queryKey: ["infinite-posts"],
 			queryFn: async ({ pageParam }) => {
-				const response = await fetch(`${import.meta.env.VITE_API_URL}/api/post?page=${pageParam}`);
+				const lastCursor = await pageParam;
+				const response = await fetch(
+					`${import.meta.env.VITE_API_URL}/api/post?take=${take}&last_cursor=${lastCursor}`
+				);
 				return response.json();
 			},
 			staleTime: 10 * 1000,
-			initialPageParam: 0,
-			getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) => {
-				console.log("getNextPageParam", lastPage, allPages, lastPageParam, allPageParams);
-				return (lastPageParam as number) + 1;
-			},
+			initialPageParam: "",
+			getNextPageParam: async (lastPage) => lastPage.meta.lastCursor,
 		});
 	const createMutation = useMutation({
 		mutationFn: async (text: string) => {
@@ -33,10 +38,16 @@ export default function App() {
 			return response.json();
 		},
 		onSuccess(createdPost: PostType) {
-			const previousPages = queryClient.getQueryData<InfiniteData<PostType[]>>(["infinite-posts"]);
+			const previousPages = queryClient.getQueryData<InfiniteData<InfinitePostResponse>>([
+				"infinite-posts",
+			]);
+			console.log(previousPages);
 			if (previousPages) {
-				queryClient.setQueryData<InfiniteData<PostType[]>>(["infinite-posts"], {
-					pages: [[createdPost, ...previousPages.pages[0]], ...previousPages.pages.slice(1)],
+				queryClient.setQueryData<InfiniteData<InfinitePostResponse>>(["infinite-posts"], {
+					pages: [
+						{ ...previousPages.pages[0], data: [createdPost, ...previousPages.pages[0].data] },
+						...previousPages.pages.slice(1),
+					],
 					pageParams: previousPages.pageParams,
 				});
 			}
@@ -48,37 +59,41 @@ export default function App() {
 	async function create() {
 		createMutation.mutate("create");
 	}
+	useEffect(() => {
+		if (inView && hasNextPage) {
+			fetchNextPage();
+		}
+	}, [hasNextPage, inView, fetchNextPage]);
+	if (error) return <div className="mt-10">{"An error has occurred: " + error.message}</div>;
 	return (
 		<div className="flex flex-col items-center p-8 gap-4">
 			<Button type="submit" color="primary" onClick={create}>
 				作成
 			</Button>
-			{/* <Button color="danger">全て削除</Button> */}
 			<div className="flex flex-col gap-4">
-				{status === "pending" ? (
-					<p>Loading...</p>
-				) : status === "error" ? (
-					<p>Error: {error.message}</p>
-				) : (
-					<>
-						{data.pages.map((page, index) => (
-							<div className="shadow-2xl" key={index}>
-								{page.map((post) => (
+				{isSuccess &&
+					data?.pages.map((page) =>
+						page.data.map((post, index) => {
+							if (page.data.length === index + 1) {
+								return (
+									<div ref={ref} key={post.id}>
+										<Post post={post}>
+											<p>{post.id}</p>
+											<b className="mx-auto text-xl">{post.text}</b>
+										</Post>
+									</div>
+								);
+							} else {
+								return (
 									<Post post={post} key={post.id}>
 										<p>{post.id}</p>
 										<b className="mx-auto text-xl">{post.text}</b>
 									</Post>
-								))}
-							</div>
-						))}
-						{hasNextPage && (
-							<button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-								{isFetchingNextPage ? "Loading more..." : "Load More"}
-							</button>
-						)}
-						{isFetching && !isFetchingNextPage && <p>Fetching more...</p>}
-					</>
-				)}
+								);
+							}
+						})
+					)}
+				{(isLoading || isFetchingNextPage) && <p className="mb-4">Loading...</p>}
 			</div>
 		</div>
 	);

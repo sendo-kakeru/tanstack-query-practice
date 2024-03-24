@@ -2,6 +2,7 @@ import { Button, Card, CardBody, CardFooter } from "@nextui-org/react";
 import { Post } from "@prisma/client";
 import { InfiniteData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PropsWithChildren } from "react";
+import { InfinitePostResponse } from "../types/type";
 
 export default function Post(props: PropsWithChildren<{ post: Post }>) {
 	const queryClient = useQueryClient();
@@ -19,17 +20,20 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 			return response.json();
 		},
 		onSuccess(editedPost: Post) {
-			const previousPages = queryClient.getQueryData<InfiniteData<Post[]>>(["infinite-posts"]);
+			const previousPages = queryClient.getQueryData<InfiniteData<InfinitePostResponse>>([
+				"infinite-posts",
+			]);
 			if (previousPages) {
-				queryClient.setQueryData<InfiniteData<Post[]>>(["infinite-posts"], {
-					pages: previousPages.pages.map((page) =>
-						page.map((post) => {
+				queryClient.setQueryData<InfiniteData<InfinitePostResponse>>(["infinite-posts"], {
+					pages: previousPages.pages.map((page) => ({
+						meta: page.meta,
+						data: page.data.map((post) => {
 							if (editedPost.id === post.id) {
 								return editedPost;
 							}
 							return post;
-						})
-					),
+						}),
+					})),
 					pageParams: previousPages.pageParams,
 				});
 			}
@@ -46,10 +50,15 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 			return response.json();
 		},
 		onSuccess(_, postId) {
-			const previousPages = queryClient.getQueryData<InfiniteData<Post[]>>(["infinite-posts"]);
+			const previousPages = queryClient.getQueryData<InfiniteData<InfinitePostResponse>>([
+				"infinite-posts",
+			]);
 			if (previousPages) {
-				queryClient.setQueryData<InfiniteData<Post[]>>(["infinite-posts"], {
-					pages: previousPages.pages.map((page) => page.filter((post) => postId !== post.id)),
+				queryClient.setQueryData<InfiniteData<InfinitePostResponse>>(["infinite-posts"], {
+					pages: previousPages.pages.map((page) => ({
+						meta: page.meta,
+						data: page.data.filter((post) => postId !== post.id),
+					})),
 					pageParams: previousPages.pageParams,
 				});
 			}
@@ -60,7 +69,7 @@ export default function Post(props: PropsWithChildren<{ post: Post }>) {
 	});
 
 	return (
-		<Card>
+		<Card className="h-[50vh]">
 			<CardBody>{props.children}</CardBody>
 			<CardFooter className="justify-center gap-2">
 				<Button color="danger" onClick={() => deleteMutation.mutate(props.post.id)}>
